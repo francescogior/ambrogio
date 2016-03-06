@@ -14,6 +14,8 @@ export default function() {
   app.use(app.router);
   app.use(express.static(path.join(__dirname, 'public')));
 
+  app.set('json spaces', 2);
+
   // development only
   if ('development' == app.get('env')) {
     app.use(express.errorHandler());
@@ -41,7 +43,7 @@ export default function() {
     console.log({ url })
     const a = request.get({ url, qs }, (error, _, response) => {
       console.log({ response });
-      res.json(JSON.stringify(JSON.parse({ text: response }), null, 2).replace('[', '').replace('{', '').replace(']', '').replace('}', ''));
+      res.send({ text: JSON.stringify(response).replace(/\[/g, '\n').replace(/\]/g, '\n').replace(/\{/g, '\n').replace(/\}/g, '\n').replace(/"/g, '').replace(/,/g, '\n').replace(/\\/g, '') });
     });
     console.log({ a })
   });
