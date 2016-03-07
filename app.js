@@ -4,6 +4,8 @@ import path from 'path';
 import { fromPairs, chunk } from 'lodash';
 import express from 'express';
 
+const trim = (w) => w.trim()
+
 export default function() {
 
   const app = express();
@@ -22,26 +24,28 @@ export default function() {
   }
 
   const makeUrl = (text) => {
-    const [rest, body] = text.split('§').map(w => w.trim());
+    const [rest, body] = text.split('§').map(trim);
     const [q, _query = ''] = /\((.*)\)/.exec(rest) || [];
-    const _path = rest.replace(q, '');
+    const subParts = rest.replace(q, '').split('~').map(trim)
+    const isMethodDeclared = subParts.length > 1
+    const [method, _path] = isMethodDeclared ? subParts : ['get', ...subParts]
     const [host] = _path.trim().split(' ');
     const hostll = host.split('|')[1] || host.split('|')[0];
     const hostl = hostll.split('>')[0];
     const path = '/' + _path.trim().split(' ').slice(1).filter(x => x).join('/')
     const chunks = chunk(_query.split(' '), 2);
     const query = fromPairs(chunks);
-    return { hostl, path, body, query };
+    return { method, hostl, path, body, query };
   };
 
   app.use(({ query, body }, res) => {
     const { text = '' } = body.text ? body : query;
     console.log({ text })
-    const { hostl, path, query: qs } = makeUrl(text.replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>'));
+    const { method, hostl, path, query: qs } = makeUrl(text.replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>'));
     const protocol = 'http://';
     const url = protocol + hostl + path;
     console.log({ url })
-    const a = request.get({ url, qs }, (error, _, response) => {
+    const a = request[method.toLowerCase()]({ url, qs }, (error, _, response) => {
       console.log({ response });
       res.send({ text: JSON.stringify(response).replace(/\[/g, '\n').replace(/\]/g, '\n').replace(/\{/g, '\n').replace(/\}/g, '\n').replace(/"/g, '').replace(/,/g, '\n').replace(/\\/g, '') });
     });
